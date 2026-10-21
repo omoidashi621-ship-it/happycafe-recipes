@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "rooms": {
+      "library": {
+        "players": {
+          "$uid": {
+            ".read": "auth != null",
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.hasChildren(['name','job','x','y'])"
+          }
+        },
+        "chat": {
+          ".read": "auth != null",
+          "$msg": {
+            ".write": "auth != null && !data.exists()",
+            ".validate": "newData.child('id').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length <= 60"
+          }
+        }
+      }
+    }
+  }
+}

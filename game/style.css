@@ -16,17 +16,23 @@ button{padding:10px 18px;border-radius:8px;border:1px solid var(--line);backgrou
 button:hover{border-color:var(--glow)}
 button.primary{background:linear-gradient(#cfa94c,#a07c2a);color:#1a1405;border-color:#e8c872;font-weight:bold}
 .nav{display:flex;gap:12px;justify-content:center;margin-top:20px}
-.preview-row{display:flex;justify-content:center}
-#avatar-preview{background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:12px}
-#avatar-options{max-width:440px;margin:16px auto}
+.avatar-layout{display:flex;gap:28px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:900px;margin:0 auto}
+.avatar-left,.avatar-right{flex:1 1 320px;max-width:420px}
+#avatar-preview{width:min(100%,calc(58vh * 0.762));height:auto;aspect-ratio:640/840;background:radial-gradient(ellipse at 50% 35%,rgba(120,220,170,.18),rgba(0,0,0,.3));border:1px solid var(--line);border-radius:16px}
+.preview-tools{display:flex;gap:10px;align-items:center;justify-content:center;margin:8px 0;opacity:.9}
+.tool-label{font-size:.8rem;opacity:.7;margin-top:4px}
+.face-row{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin:6px 0}
+.face-btn{padding:3px 6px;font-size:1.3rem;line-height:1.2;border-radius:10px}
+.face-btn.on{border-color:var(--gold);box-shadow:0 0 8px var(--gold)}
+#avatar-options{margin:8px auto 16px}
 .opt{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap;justify-content:center}
 .opt .label{width:64px;text-align:right;opacity:.8}
 .swatch{width:30px;height:30px;border-radius:50%;border:2px solid transparent;padding:0}
 .swatch.sel,.chip.sel{border-color:var(--gold);box-shadow:0 0 8px var(--gold)}
 .chip{padding:6px 12px}
-#job-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;max-width:720px;margin:16px auto}
+#job-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;max-width:860px;margin:16px auto}
+.job-cv{width:120px;height:156px;display:block;margin:0 auto 4px}
 .job{padding:14px 10px;border:1px solid var(--line);border-radius:12px;background:var(--panel);cursor:pointer}
-.job .ic{font-size:2rem}
 .job b{display:block;margin:4px 0;color:var(--gold)}
 .job small{opacity:.8}
 .job.sel{border-color:var(--gold);box-shadow:0 0 12px rgba(232,200,114,.5)}
@@ -34,10 +40,26 @@ button.primary{background:linear-gradient(#cfa94c,#a07c2a);color:#1a1405;border-
 #hud-top{position:absolute;top:8px;left:8px;display:flex;gap:12px;background:rgba(0,0,0,.5);padding:6px 12px;border-radius:8px;font-size:.85rem}
 #hint{position:absolute;top:44px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:6px 14px;border-radius:20px;display:none;color:var(--gold)}
 #chat{position:absolute;left:8px;right:8px;bottom:8px;max-width:520px;text-align:left}
-#chat-log{max-height:150px;overflow:auto;background:rgba(0,0,0,.5);border-radius:8px;padding:6px 10px;font-size:.85rem;margin-bottom:6px}
+#chat-log{max-height:170px;overflow:auto;background:rgba(0,0,0,.5);border-radius:8px;padding:6px 10px;font-size:.85rem;margin-bottom:6px}
 #chat-log div{margin:2px 0;word-break:break-all}
+#chat-log .line{display:flex;gap:7px;align-items:flex-start;margin:4px 0}
+.chat-face{width:28px;height:28px;flex:none;border-radius:50%;border:1px solid rgba(232,200,114,.6)}
 #chat-log .sys{opacity:.6}
 #chat-log .who{color:var(--gold)}
 #chat-form{display:flex;gap:6px}
 #chat-form input{flex:1}
 #chat-form button{padding:8px 12px}
+#loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#04100b;color:var(--gold);letter-spacing:.1em}
+#emote-bar{justify-content:flex-start;background:rgba(0,0,0,.4);border-radius:10px;padding:2px 4px;margin:0 0 6px}
+#emote-bar .face-btn{background:transparent;border-color:transparent;font-size:1.25rem}
+#emote-bar .face-btn:hover{background:rgba(255,255,255,.12)}
+#hint{cursor:pointer}
+#portrait{position:absolute;top:46px;left:8px;width:76px;height:76px;border-radius:50%;border:2px solid var(--gold);background:radial-gradient(circle,rgba(120,220,170,.35),rgba(0,0,0,.55));box-shadow:0 0 12px rgba(0,0,0,.5)}
+#emote-bar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+#emote-bar::-webkit-scrollbar{display:none}
+#emote-bar .face-btn{flex:none}
+@media (max-width:600px){
+  #avatar-preview{width:min(100%,calc(44vh * 0.762))}
+  h1{font-size:1.8rem}
+}
+#vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,rgba(0,12,6,0) 45%,rgba(0,12,6,.55) 100%)}

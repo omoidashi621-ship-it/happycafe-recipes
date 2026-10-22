@@ -1,8 +1,10 @@
 import { JOBS, jobById } from './jobs.js';
 import {
-  SKINS, HAIR_COLORS, OUTFITS, EYE_COLORS, HAIR_STYLES, FACES,
-  defaultLook, drawAvatar, faceFromText, headTopOf,
+  SKINS, HAIR_COLORS, OUTFITS, EYE_COLORS, HAIR_STYLES, FACES, GESTURES, GESTURE_MS,
+  defaultLook, faceFromText,
 } from './avatar.js';
+import { drawPixelAvatar, pixelTop } from './pixel.js';
+import { drawPortrait } from './portrait.js';
 import { WORLD, SPAWN, PORTALS, collides, buildScene, createFx, drawLayer } from './world.js';
 import { createNet, isFirebaseConfigured } from './net.js';
 
@@ -36,9 +38,10 @@ $('btn-to-avatar').onclick = () => {
 };
 
 // ---- アバター選択 ----
-const preview = { dir: 'down', face: 'normal', since: -9 };
+const preview = { dir: 'down', face: 'normal', since: -9, gest: null, gestAt: -9, walk: false };
 const DIRS = ['down', 'left', 'up', 'right'];
 const setPreviewFace = (id) => { preview.face = id; preview.since = nowSec(); };
+const setPreviewGesture = (id) => { preview.gest = id; preview.gestAt = nowSec(); };
 
 const swatchRows = [['肌', 'skin', SKINS], ['髪色', 'hair', HAIR_COLORS], ['目', 'eyes', EYE_COLORS], ['服', 'outfit', OUTFITS]];
 function buildAvatarOptions() {
@@ -61,26 +64,38 @@ function buildAvatarOptions() {
   });
   box.append(row);
 }
-function buildFaceRow(box, onPick) {
+// 表情ボタンと、首ふり・うなずきボタンを並べる
+function buildReactionRow(box, onFace, onGesture) {
   box.innerHTML = '';
   for (const f of FACES) {
     const b = el('button', 'face-btn', f.icon);
-    b.title = f.label; b.onclick = () => onPick(f.id);
+    b.title = f.label; b.onclick = () => onFace(f.id);
+    box.append(b);
+  }
+  box.append(el('span', 'sep'));
+  for (const g of GESTURES) {
+    const b = el('button', 'face-btn gesture', g.icon);
+    b.title = g.label; b.onclick = () => onGesture(g.id);
     box.append(b);
   }
 }
-buildFaceRow($('preview-faces'), setPreviewFace);
+buildReactionRow($('preview-faces'), setPreviewFace, setPreviewGesture);
 $('btn-rot-l').onclick = () => { preview.dir = DIRS[(DIRS.indexOf(preview.dir) + 1) % 4]; };
 $('btn-rot-r').onclick = () => { preview.dir = DIRS[(DIRS.indexOf(preview.dir) + 3) % 4]; };
+$('btn-walk').onclick = () => { preview.walk = !preview.walk; $('btn-walk').classList.toggle('on', preview.walk); };
 $('btn-avatar-back').onclick = () => show('title');
 $('btn-to-job').onclick = () => { save(); show('job'); buildJobs(); };
 
 // ---- ジョブ選択 ----
+const JOB_CARD = { w: 120, h: 150, k: 3 };   // CSS px。ドット 1 つを 3px にして、整数倍で表示する
 function buildJobs() {
   const box = $('job-list'); box.innerHTML = '';
+  const dpr = devicePixelRatio || 1;
   for (const j of JOBS) {
     const d = el('div', 'job' + (profile.job === j.id ? ' sel' : ''),
-      `<canvas class="job-cv" width="200" height="260" data-job="${j.id}"></canvas><b>${j.icon} ${j.name}</b><small>${j.desc}</small>`);
+      `<canvas class="job-cv" data-job="${j.id}"></canvas><b>${j.icon} ${j.name}</b><small>${j.desc}</small>`);
+    const cv = d.querySelector('canvas');
+    cv.width = JOB_CARD.w * dpr; cv.height = JOB_CARD.h * dpr;
     d.onclick = () => { profile.job = j.id; buildJobs(); };
     box.append(d);
   }
@@ -89,21 +104,34 @@ $('btn-job-back').onclick = () => show('avatar');
 $('btn-enter').onclick = () => { save(); enterWorld(); };
 buildAvatarOptions();
 
-// 選択画面のアニメーション(プレビューとジョブカード)
+// 選択画面のアニメーション(顔のアップ・ドットの見た目・ジョブカード)
+function sizeCanvas(c) {
+  const dpr = devicePixelRatio || 1, w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  return dpr;
+}
 function previewLoop(ms) {
   const t = ms / 1000;
   const active = document.querySelector('.screen.active')?.id;
   if (active === 'screen-avatar') {
     const c = $('avatar-preview'), g = c.getContext('2d');
+    sizeCanvas(c);
     g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, c.width, c.height);
-    drawAvatar(g, c.width / 2, c.height - 56, profile.look, profile.job, {
-      dir: preview.dir, face: preview.face, faceAge: t - preview.since, t, scale: 4.7, seed: 0.3,
+    drawPortrait(g, 0, 0, c.width, profile.look, profile.job, {
+      face: preview.face, faceAge: t - preview.since, t, seed: 0.3, gest: preview.gest, gestAge: t - preview.gestAt,
+    });
+    const p = $('pixel-preview'), pg = p.getContext('2d'), dpr = sizeCanvas(p);
+    pg.setTransform(1, 0, 0, 1, 0, 0); pg.clearRect(0, 0, p.width, p.height);
+    const k = Math.max(2, Math.round(Math.min(p.height / 48, p.width / 30))), phase = t * 9.5;
+    drawPixelAvatar(pg, p.width / 2, p.height - 8 * dpr, k, profile.look, profile.job, {
+      dir: preview.dir, face: preview.face, faceAge: t - preview.since, t, seed: 0.3, gest: preview.gest, gestAge: t - preview.gestAt,
+      amt: preview.walk ? 1 : 0, phase, dpr: 1,
     });
   } else if (active === 'screen-job') {
     for (const c of document.querySelectorAll('.job-cv')) {
-      const g = c.getContext('2d');
+      const g = c.getContext('2d'), dpr = c.width / JOB_CARD.w;
       g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, c.width, c.height);
-      drawAvatar(g, c.width / 2, c.height - 22, profile.look, c.dataset.job, { dir: 'down', face: 'smile', t, scale: 1.7, seed: 0.2, faceAge: 9 });
+      drawPixelAvatar(g, c.width / 2, c.height - 8 * dpr, JOB_CARD.k * dpr, profile.look, c.dataset.job, { dir: 'down', face: 'smile', t, seed: 0.2, faceAge: 9, dpr: 1 });
     }
   }
   requestAnimationFrame(previewLoop);
@@ -126,6 +154,8 @@ const wantScale = () => clamp(Z * (devicePixelRatio || 1), 1, 2);
 function resize() {
   const dpr = devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
   canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  const pc = $('portrait');
+  pc.width = Math.round(pc.clientWidth * dpr); pc.height = Math.round(pc.clientHeight * dpr);
   Z = clamp(clamp(Math.min(W / 760, H / 560), 1.15, 1.75) * zoomMul, 0.8, 2.4);
   // 背景は表示倍率に合わせた解像度で作り、等倍で貼る(拡大縮小の計算を避けて軽くする)
   if (scene && Math.abs(wantScale() - scene.scale) / scene.scale > 0.12) {
@@ -141,7 +171,7 @@ canvas.addEventListener('wheel', (e) => {
 
 const pub = (m) => ({
   name: m.name, look: m.look, job: m.job, x: Math.round(m.x), y: Math.round(m.y),
-  dir: m.dir, face: m.face, emote: m.emote || null,
+  dir: m.dir, face: m.face, emote: m.emote || null, gest: m.gest || null, gn: m.gn || 0,
 });
 function push(force) {
   const s = JSON.stringify(pub(me)), t = performance.now();
@@ -168,8 +198,9 @@ async function enterWorld() {
   $('loading').style.display = 'none';
 
   me = {
-    name: profile.name, look: profile.look, job: profile.job, ...spawnPoint(), dir: 'up',
+    name: profile.name, look: profile.look, job: profile.job, ...spawnPoint(), dir: 'down',
     vx: 0, vy: 0, phase: 0, amt: 0, face: 'smile', faceSince: nowSec(), seed: 0.5, emote: null,
+    gest: null, gn: 0, gestAt: -9,
   };
   net = createNet();
   net.onPlayers((p) => syncOthers(p));
@@ -193,9 +224,11 @@ function syncOthers(p) {
     if (!v || typeof v !== 'object') continue;
     let o = others[id];
     const x = Number(v.x) || 0, y = Number(v.y) || 0;
-    if (!o) o = others[id] = { x, y, phase: 0, amt: 0, seed: hash(id), faceSince: now - 9 };
+    if (!o) o = others[id] = { x, y, phase: 0, amt: 0, seed: hash(id), faceSince: now - 9, gn: v.gn || 0, gestAt: -9 };
     const face = FACES.some((f) => f.id === v.face) ? v.face : 'normal';
     if (o.face !== face) o.faceSince = now;
+    if ((v.gn || 0) !== o.gn && GESTURES.some((g) => g.id === v.gest)) { o.gest = v.gest; o.gestAt = now; }
+    o.gn = v.gn || 0;
     Object.assign(o, {
       name: String(v.name || '旅人').slice(0, 12), look: v.look || defaultLook(), job: v.job,
       dir: v.dir || 'down', face, emote: v.emote || null, tx: x, ty: y,
@@ -211,10 +244,19 @@ function setFace(id, ms = 6000) {
   me.face = id; me.faceSince = nowSec();
   clearTimeout(faceTimer);
   if (id !== 'normal') faceTimer = setTimeout(() => setFace('normal'), ms);
-  document.querySelectorAll('#emote-bar .face-btn').forEach((b, i) => b.classList.toggle('on', FACES[i].id === id && id !== 'normal'));
+  document.querySelectorAll('#emote-bar .face-btn:not(.gesture)').forEach((b, i) => b.classList.toggle('on', FACES[i].id === id && id !== 'normal'));
   if (net) push(true);
 }
-buildFaceRow($('emote-bar'), (id) => { lastInput = nowSec(); setFace(me.face === id ? 'normal' : id); });
+// 首をふる / うなずく
+let gestTimer = null;
+function doGesture(type) {
+  if (!me) return;
+  me.gest = type; me.gn = (me.gn || 0) + 1; me.gestAt = nowSec();
+  clearTimeout(gestTimer);
+  gestTimer = setTimeout(() => { me.gest = null; push(true); }, GESTURE_MS + 100);
+  if (net) push(true);
+}
+buildReactionRow($('emote-bar'), (id) => { touchInput(); setFace(me.face === id ? 'normal' : id); }, (id) => { touchInput(); doGesture(id); });
 
 // ---- 入力 ----
 const typing = () => document.activeElement === $('chat-input');
@@ -229,6 +271,8 @@ addEventListener('keydown', (e) => {
   if (e.key === ' ' && nearPortal) portalAction(nearPortal);
   const n = '1234567890'.indexOf(e.key);
   if (n >= 0 && FACES[n]) setFace(FACES[n].id);
+  if (e.key.toLowerCase() === 'q') doGesture('shake');
+  if (e.key.toLowerCase() === 'e') doGesture('nod');
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 canvas.addEventListener('pointerdown', (e) => setTarget(e));
@@ -252,6 +296,7 @@ $('chat-form').onsubmit = (e) => {
   touchInput();
   const f = faceFromText(text);
   if (f) setFace(f, 4500);
+  if (f === 'angry') doGesture('shake');
   net.chat(text);
   inp.blur();
 };
@@ -270,7 +315,8 @@ function faceIcon(p) {
   const g = c.getContext('2d');
   g.beginPath(); g.arc(28, 28, 28, 0, Math.PI * 2); g.clip();
   g.fillStyle = 'rgba(120,200,160,.25)'; g.fillRect(0, 0, 56, 56);
-  drawAvatar(g, 28, 28 + 74 * 1.05, p.look, p.job, { dir: 'down', face: p.face || 'normal', faceAge: 9, t: 1.2, seed: 0.3, scale: 1.05 });
+  const s = 56 / 150;
+  drawPortrait(g, 28 - 120 * s, 28 - 150 * s, 240 * s, p.look, p.job, { face: p.face || 'normal', faceAge: 9, t: 1.2, seed: 0.3 });
   return c;
 }
 
@@ -387,40 +433,47 @@ function draw(time) {
   items.push({ y: me.y, p: me, self: true });
   for (const o of Object.values(others)) items.push({ y: o.y, p: o });
   items.sort((a, b) => a.y - b.y);
+  // ドット絵は 1 ドットを整数のデバイス px にそろえて、画面座標に描く
+  const k = Math.max(2, Math.round(Z * dpr * 2.9)) / dpr;
+  const toScreen = (x, y) => [(x - cam.x) * Z, (y - cam.y) * Z];
   for (const it of items) {
     if (it.sprite) drawSprite(it.sprite, time, view);
     else {
-      const p = it.p;
-      drawAvatar(ctx, p.x, p.y, p.look, p.job, { dir: p.dir, phase: p.phase, amt: p.amt, t: time, face: p.face, faceAge: time - p.faceSince, seed: p.seed });
+      const p = it.p, [px, py] = toScreen(p.x, p.y);
+      ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawPixelAvatar(ctx, px, py, k, p.look, p.job, {
+        dir: p.dir, phase: p.phase, amt: p.amt, t: time, face: p.face, faceAge: time - p.faceSince, seed: p.seed,
+        gest: p.gest, gestAge: time - (p.gestAt ?? -9), dpr,
+      });
+      ctx.restore();
     }
   }
   fx.drawAir(ctx, time, view);
 
-  drawPortrait(time);
+  drawHudPortrait(time);
 
   // ここから画面座標(文字をくっきり描く)
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const toScreen = (x, y) => [(x - cam.x) * Z, (y - cam.y) * Z];
   for (const it of items) {
     if (!it.p) continue;
     const p = it.p, [px, py] = toScreen(p.x, p.y);
     if (px < -80 || px > W + 80 || py < -60 || py > H + 260) continue;
     drawTag(px, py, p, !!it.self);
-    const top = toScreen(p.x, p.y - headTopOf(p.job) - 6)[1];
-    const b = bubbles.get(it.self ? net.id : Object.keys(others).find((k) => others[k] === p));
+    const top = py - pixelTop(p.look, p.job) * k - 8;
+    const b = bubbles.get(it.self ? net.id : Object.keys(others).find((id) => others[id] === p));
     if (b && b.until > Date.now()) drawBubble(px, top, b.text, clamp((b.until - Date.now()) / 600, 0, 1));
     if (p.emote) {
       ctx.font = '30px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(p.emote, px + 34 * Z * 0.8, top + 18 + Math.sin(time * 5) * 4);
+      ctx.fillText(p.emote, px + 14 * k, top + 18 + Math.sin(time * 5) * 4);
     }
   }
 }
 
-function drawPortrait(time) {
+function drawHudPortrait(time) {
   const c = $('portrait'), g = c.getContext('2d');
   g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, c.width, c.height);
-  drawAvatar(g, c.width / 2, c.height / 2 + 74 * 2.3, me.look, me.job, {
-    dir: 'down', face: me.face, faceAge: time - me.faceSince, t: time, seed: me.seed, scale: 2.3,
+  drawPortrait(g, 0, 0, c.width, me.look, me.job, {
+    face: me.face, faceAge: time - me.faceSince, t: time, seed: me.seed, gest: me.gest, gestAge: time - me.gestAt,
   });
 }
 

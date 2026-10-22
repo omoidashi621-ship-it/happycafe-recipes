@@ -23,10 +23,14 @@
     <h2>アバターを選ぶ</h2>
     <div class="avatar-layout">
       <div class="avatar-left">
-        <canvas id="avatar-preview" width="640" height="840"></canvas>
-        <div class="preview-tools"><button id="btn-rot-l" title="向きを変える">⟲</button><span>向き</span><button id="btn-rot-r" title="向きを変える">⟳</button></div>
-        <div class="tool-label">表情をためす</div>
+        <canvas id="avatar-preview"></canvas>
+        <div class="tool-label">表情・しぐさをためす</div>
         <div id="preview-faces" class="face-row"></div>
+      </div>
+      <div class="avatar-mid">
+        <div class="tool-label">ゲーム中の姿(ドット絵)</div>
+        <canvas id="pixel-preview"></canvas>
+        <div class="preview-tools"><button id="btn-rot-l" title="向きを変える">⟲</button><span>向き</span><button id="btn-rot-r" title="向きを変える">⟳</button><button id="btn-walk" title="歩く">歩く</button></div>
       </div>
       <div class="avatar-right">
         <div id="avatar-options"></div>
@@ -51,14 +55,14 @@
     <canvas id="world"></canvas>
     <div id="vignette"></div>
     <div id="loading">世界樹の図書館へ向かっています…</div>
-    <canvas id="portrait" width="144" height="144"></canvas>
+    <canvas id="portrait"></canvas>
     <div id="hud-top"><span id="hud-room"></span><span id="hud-count"></span></div>
     <div id="hint"></div>
     <div id="chat">
       <div id="chat-log"></div>
       <div id="emote-bar" class="face-row"></div>
       <form id="chat-form">
-        <input id="chat-input" maxlength="60" placeholder="Enter でチャット / 矢印・WASD かタップで移動 / 1〜0 で表情" autocomplete="off">
+        <input id="chat-input" maxlength="60" placeholder="Enter でチャット / 矢印・WASD かタップで移動 / 1〜0 表情 / Q E しぐさ" autocomplete="off">
         <button type="button" id="btn-emote" title="エモート">✨</button>
         <button>送信</button>
       </form>

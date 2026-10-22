@@ -503,6 +503,12 @@ export function createFx() {
         g.globalAlpha = 0.45 + 0.25 * Math.sin(t * 2);
         g.drawImage(spr.blue, p.x - p.r * 1.8, p.y - p.r * 1.2, p.r * 3.6, p.r * 2.4);
       }
+      // 漂う光の粒(顔の表情が隠れないよう、キャラクターの後ろに描く)
+      for (const m of motes) {
+        if (!seen(v, m.x - m.sz, m.y - m.sz, m.sz * 2, m.sz * 2)) continue;
+        g.globalAlpha = 0.25 + 0.55 * Math.abs(Math.sin(time * m.sp * 1.3 + m.ph));
+        g.drawImage(spr.white, m.x - m.sz, m.y - m.sz, m.sz * 2, m.sz * 2);
+      }
       g.restore();
     },
     drawAir(g, t, v) {
@@ -520,12 +526,6 @@ export function createFx() {
         if (!seen(v, x, y, 110, 110)) continue;
         g.globalAlpha = 0.45 + 0.12 * Math.sin(t * 7 + i * 1.7);
         g.drawImage(spr.gold, x, y, 110, 110);
-      }
-      // 漂う光の粒
-      for (const m of motes) {
-        if (!seen(v, m.x - m.sz, m.y - m.sz, m.sz * 2, m.sz * 2)) continue;
-        g.globalAlpha = 0.25 + 0.55 * Math.abs(Math.sin(time * m.sp * 1.3 + m.ph));
-        g.drawImage(spr.white, m.x - m.sz, m.y - m.sz, m.sz * 2, m.sz * 2);
       }
       g.restore();
     },
